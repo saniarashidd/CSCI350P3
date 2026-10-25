@@ -1,3 +1,5 @@
+#include "pstat.h" // Added by Neta Shubin
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -49,7 +51,23 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  // Added by Neta Shubin
+  int times[3]; // number of times each process was scheduled at each of 3 priority queues
+  int ticks[3]; // number of ticks each process used the last time it was scheduled in each priority queue cannot be greater than the time-slice for each queue
+  uint wait_time; // number of ticks each RUNNABLE process waited in the lowest priority queue
+  struct sched_stat_t sched_stats[NSCHEDSTATS]; // schedule stats for each tick
+  int num_stats_used; // count to the real end of the sched_stats array since not all entries may acually be used
 };
+
+// Added by Neta Shubin
+// Priority queue arrays (Q0, Q1, Q2)
+extern struct proc* q0[NPROC];
+extern struct proc* q1[NPROC];
+extern struct proc* q2[NPROC];
+// Tail counters designating the number of elements in each queue
+extern int c0;
+extern int c1;
+extern int c2;
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

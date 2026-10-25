@@ -7,6 +7,16 @@
 #include "proc.h"
 #include "spinlock.h"
 
+void remove_from_queues(struct proc *p); // Added by Neta Shubin - defined at the bottom of this file
+
+// Added by Neta Shubin
+struct proc* q0[NPROC];
+struct proc* q1[NPROC];
+struct proc* q2[NPROC];
+int c0 = 0;
+int c1 = 0;
+int c2 = 0;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -112,6 +122,26 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Added by Neta Shubin
+  // Remove from existing queues if present (slide 13)
+  acquire(&ptable.lock);
+  remove_from_queues(p); // Helper function define at the bottom of this file
+  release(&ptable.lock);
+  // Initialize process scheduling properties (slide 15)
+  p->times[0] = 0;
+  p->times[1] = 0;
+  p->times[2] = 0;
+  p->ticks[0] = 0;
+  p->ticks[1] = 0;
+  p->ticks[2] = 0;
+  p->wait_time = 0;
+  p->num_stats_used = 0;
+  // Add p into first priority queue (slide 15)
+  acquire(&ptable.lock);
+  q0[c0] = p;
+  c0++;
+  release(&ptable.lock);
+
   return p;
 }
 
@@ -141,6 +171,10 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+
+  // Added by Neta Shubin
+  // Explicitly reset stats count for the initial user process (slide 16)
+  p->num_stats_used = 0;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -530,5 +564,41 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+  }
+}
+
+// Helpers added by Neta Shubin
+
+// Helper to shift array elements left starting from index 'idx'
+// Reference slide 14 
+void shift_left(struct proc** q, int* count, int idx) {
+  for (int i = idx; i < *count-1; i++) {
+    q[i] = q[i+1]; // Shift elements left
+  }
+  q[*count-1] = 0; // Clear former last pointer
+  (*count)--; // Decrement element counter
+}
+
+// Helper to find and remove a process pointer 'p' from all queues
+// Reference slide 13
+void remove_from_queues(struct proc *p) {
+  // 3 for loops to check each queue and remove the process if found
+  for (int i = 0; i < c0; i++) {
+    if (q0[i] == p) {
+      shift_left(q0, &c0, i);
+      break;
+    }
+  }
+  for (int i = 0; i < c1; i++) {
+    if (q1[i] == p) {
+      shift_left(q1, &c1, i);
+      break;
+    }
+  }
+  for (int i = 0; i < c2; i++) {
+    if (q2[i] == p) {
+      shift_left(q2, &c2, i);
+      break;
+    }
   }
 }

@@ -23,6 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int getpinfo(int pid); // Added by Neta Shubin
 
 // ulib.c
 int stat(const char*, struct stat*);

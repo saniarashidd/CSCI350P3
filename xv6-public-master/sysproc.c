@@ -6,6 +6,14 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "spinlock.h" // Added by Neta Shubin
+
+// Declare ptable as extern so sysproc.c can access it from proc.c - Neta Shubin
+extern struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;
+
 
 int
 sys_fork(void)
@@ -88,4 +96,39 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// Added by Neta Shubin
+// This routine takes as input an ID of a process (pid) and prints some basic scheduling information about the process to the terminal: the ticks at which it is scheduled, how long it runs before it gives up the CPU, what priority it has each time it is scheduled, etc. This function returns -1 in case of error and 0 in case of success. 
+int
+sys_getpinfo(void)
+{
+  int pid;
+  struct proc *p;
+
+  // Return -1 if the argument is invalid
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  acquire(&ptable.lock);
+  // Print the stats of the relevant process to the terminal
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      cprintf("name=%s, pid=%d\n", p->name, p->pid);
+      cprintf("wait_time=%d\n", p->wait_time);
+      cprintf("ticks={%d, %d, %d}\n", p->ticks[0], p->ticks[1], p->ticks[2]);
+      cprintf("times={%d, %d, %d}\n", p->times[0], p->times[1], p->times[2]);
+      
+      for(int i = 0; i < p->num_stats_used; i++){
+        cprintf("start=%d, duration=%d, priority=%d\n", 
+                p->sched_stats[i].start_tick, 
+                p->sched_stats[i].duration, 
+                p->sched_stats[i].priority);
+      }
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1; // Process not found
 }

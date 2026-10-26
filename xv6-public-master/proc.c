@@ -8,6 +8,7 @@
 #include "spinlock.h"
 
 void remove_from_queues(struct proc *p); // Added by Neta Shubin - defined at the bottom of this file
+void shift_left(struct proc** q, int* count, int idx); // Added by Neta Shubin - defined at the bottom of this file
 
 // Added by Neta Shubin
 struct proc* q0[NPROC];
@@ -390,7 +391,7 @@ scheduler(void)
         //run it
         swtch(&(c->scheduler), p->context);
         switchkvm();
-        //write stats]
+        //write stats
         int duration = ticks - start_tick;
         if (p->num_stats_used < NSCHEDSTATS) {
           p->sched_stats[p->num_stats_used].priority = 0;
@@ -502,17 +503,10 @@ scheduler(void)
         c->proc = 0; //reset cpu
       }
     }
-    if (!p) { 
-      release(&ptable.lock);
-      continue; 
-    }
     // Switch to chosen process.  It is the process's job
     // to release ptable.lock and then reacquire it
     // before jumping back to us.
     
-    
-    
-
     // Process is done running for now.
     // It should have changed its p->state before coming back.
     c->proc = 0;
@@ -740,7 +734,7 @@ void remove_from_queues(struct proc *p) {
 void
 boost() {
   struct proc *p;
-  for(int i = 0; i < c2; i++) { //check q0
+  for(int i = 0; i < c2; i++) { //check q2
       if (q2[i] && q2[i]->state == RUNNABLE) {
         p = q2[i];
         p->wait_time++;

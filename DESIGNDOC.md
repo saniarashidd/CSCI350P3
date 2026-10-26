@@ -1,7 +1,7 @@
 Modified files include:
 
 
-* Makefile: 
-* proc.h: 
-* pstat.h: 
-* proc.c: updated scheduler() function to implement MFQ priority logic. Instead of the xv6 vanilla round-robin loop over ptable.proc, the scheduler goes through each of the queues: q0, q1, and then q2, in order of priority, then running the highest-priority RUNNABLE process. Scheduling stats are written and demotion rules are applied. boost() was also implemented, where it boosts processes that have been waiting for a long time up in priority.
+* Makefile: Changed CPUS := 2 to CPUS := 1 to only use 1 CPU.
+* proc.h: Added relevant scheduling data to the proc struct, including the number of times each process was scheduled at each of 3 priority queues, the number of ticks each process used the last time it was scheduled in each priority queue (cannot be greater than the time-slice for each queue), the number of ticks each RUNNABLE process waited in the lowest priority queue, the schedule stats for each tick, the count to the real end of the sched_stats array since not all entries may acually be used. Also defined priority queues q0, q1, and q2, and tail counters c0, c1, and c2.
+* pstat.h: Defined a sched_stat_t struct, responsible for recording the scheduling state per process at a particular tick.
+* proc.c: Initialized priorty queues (q0, q1, q2) and their counters (c0, c1, c2). Updated allocproc() to remove the given process from existing queues if already present, initialize process scheduling properties, and then add the process into first priority queue. Updated userinit() to explicitly reset the number of stats used for the initial user process. Added helper function shift_left() to shift array elements left starting from index 'idx' and remove_from_queues() to find and remove a process pointer 'p' from all queues. Updated scheduler() function to implement MFQ priority logic. Instead of the xv6 vanilla round-robin loop over ptable.proc, the scheduler goes through each of the queues: q0, q1, and then q2, in order of priority, then running the highest-priority RUNNABLE process. Scheduling stats are written and demotion rules are applied. The function boost() was also implemented, where it boosts processes that have been waiting for a long time up in priority. 

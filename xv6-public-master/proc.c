@@ -16,6 +16,7 @@ struct proc* q2[NPROC];
 int c0 = 0;
 int c1 = 0;
 int c2 = 0;
+extern uint ticks; //Sania Rashid
 
 struct {
   struct spinlock lock;
@@ -366,24 +367,156 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+    p = 0;
+    
+    //Sania Rashid - scan q0, then q1, then q2 for runnable processes
+    
+    //Q0
+    if (c0 > 0) {
+      int i;
+      for(i = 0; i < c0; i++) { //check q0
+        if (q0[i] && q0[i]->state == RUNNABLE) {
+          p = q0[i];
+          break;
+        }
+      }
+      if (p) {
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        //write stats
+        int start_tick = ticks;
+        
+        //run it
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+        //write stats]
+        int duration = ticks - start_tick;
+        if (p->num_stats_used < NSCHEDSTATS) {
+          p->sched_stats[p->num_stats_used].priority = 0;
+          p->sched_stats[p->num_stats_used].start_tick = start_tick;
+          p->sched_stats[p->num_stats_used].duration = duration;
+          p->num_stats_used++;
+        }
+        p->times[0]++;
+        p->ticks[0] = duration;
+        //second half
+        if (duration >= 1) {
+          q1[c1] = p; //put at end of q1
+          c1++;
+          shift_left(q0, &c0, i);
+          
+        } else {
+          shift_left(q0, &c0, i);
+          q0[c0] = p;
+          c0++;
+        }
+        boost();
+        c->proc = 0; //reset cpu
+      }
     }
+
+    //Q1
+    if (!p && c1 > 0) { // check q1
+      int i;
+      for(i = 0; i < c1; i++) { //check q0
+        if (q1[i] && q1[i]->state == RUNNABLE) {
+          p = q1[i];
+          break;
+        }
+      }
+      if (p) { 
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        //write stats
+        int start_tick = ticks;
+        
+        //run it
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+        int duration = ticks - start_tick;
+        if (p->num_stats_used < NSCHEDSTATS) {
+          p->sched_stats[p->num_stats_used].priority = 1;
+          p->sched_stats[p->num_stats_used].start_tick = start_tick;
+          p->sched_stats[p->num_stats_used].duration = duration;
+          p->num_stats_used++;
+        }
+        p->times[1]++;
+        p->ticks[1] = duration;
+        //second half
+        if (duration >= 2) {
+          q2[c2] = p; //put at end of q1
+          c2++;
+          shift_left(q1, &c1, i);
+          
+        } else {
+          shift_left(q1, &c1, i);
+          q1[c1] = p;
+          c1++;
+
+        }
+        boost();
+        c->proc = 0; //reset cpu
+      }
+    }
+
+    //Q2
+    if (!p && c2 > 0) { // check q2
+      int i;
+      for(i = 0; i < c2; i++) { //check q0
+        if (q2[i] && q2[i]->state == RUNNABLE) {
+          p = q2[i];
+          break;
+        }
+      }
+      if (p) {
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        //write stats
+        int start_tick = ticks;
+        //run it
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+        int duration = ticks - start_tick;
+        if (p->num_stats_used < NSCHEDSTATS) {
+          p->sched_stats[p->num_stats_used].priority = 2;
+          p->sched_stats[p->num_stats_used].start_tick = start_tick;
+          p->sched_stats[p->num_stats_used].duration = duration;
+          p->num_stats_used++;
+        }
+        p->times[2]++;
+        p->ticks[2] = duration;
+        //second half
+        if (duration >= 8) {
+          shift_left(q2, &c2, i);
+          q2[c2] = p;
+          c2++;
+        } else {
+          shift_left(q2, &c2, i);
+          q2[c2] = p;
+          c2++;
+        }
+        boost();
+        c->proc = 0; //reset cpu
+      }
+    }
+    if (!p) { 
+      release(&ptable.lock);
+      continue; 
+    }
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    
+    
+    
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    
     release(&ptable.lock);
 
   }
@@ -601,4 +734,24 @@ void remove_from_queues(struct proc *p) {
       break;
     }
   }
+}
+
+//Sania Rashid
+void
+boost() {
+  struct proc *p;
+  for(int i = 0; i < c2; i++) { //check q0
+      if (q2[i] && q2[i]->state == RUNNABLE) {
+        p = q2[i];
+        p->wait_time++;
+        if (p->wait_time >= 50) {
+          shift_left(q2, &c2, i);
+          i--;
+          q0[c0] = p;
+          c0++;
+          p->wait_time = 0;
+        }
+      }
+  }
+
 }

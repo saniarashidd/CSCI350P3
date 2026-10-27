@@ -406,7 +406,7 @@ scheduler(void)
           q1[c1] = p; //put at end of q1
           c1++;
           shift_left(q0, &c0, i);
-          
+          p->ticks[1] = 0; //reset accumulator
         } else {
           shift_left(q0, &c0, i);
           q0[c0] = p;
@@ -444,13 +444,13 @@ scheduler(void)
           p->num_stats_used++;
         }
         p->times[1]++;
-        p->ticks[1] = duration;
+        p->ticks[1] += duration;
         //second half
-        if (duration >= 2) {
+        if (p->ticks[1] >= 2) {
           q2[c2] = p; //put at end of q1
           c2++;
           shift_left(q1, &c1, i);
-          
+          p->ticks[1] = 0;
         } else {
           shift_left(q1, &c1, i);
           q1[c1] = p;
@@ -488,12 +488,13 @@ scheduler(void)
           p->num_stats_used++;
         }
         p->times[2]++;
-        p->ticks[2] = duration;
+        p->ticks[2] += duration;
         //second half
-        if (duration >= 8) {
+        if (p->ticks[2] >= 8) {
           shift_left(q2, &c2, i);
           q2[c2] = p;
           c2++;
+          p->ticks[2] = 0;
         } else {
           shift_left(q2, &c2, i);
           q2[c2] = p;
@@ -744,6 +745,7 @@ boost() {
           q0[c0] = p;
           c0++;
           p->wait_time = 0;
+          p->ticks[2] = 0;
         }
       }
   }

@@ -100,6 +100,7 @@ sys_uptime(void)
 
 // Added by Neta Shubin
 // This routine takes as input an ID of a process (pid) and prints some basic scheduling information about the process to the terminal: the ticks at which it is scheduled, how long it runs before it gives up the CPU, what priority it has each time it is scheduled, etc. This function returns -1 in case of error and 0 in case of success. 
+// References slide 31
 int
 sys_getpinfo(void)
 {
@@ -110,21 +111,25 @@ sys_getpinfo(void)
   if(argint(0, &pid) < 0)
     return -1;
 
+  // Get lock
   acquire(&ptable.lock);
-  // Print the stats of the relevant process to the terminal
+  // Get current process With for loop through all processes in ptable
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    // Find pic
     if(p->pid == pid){
       cprintf("name=%s, pid=%d\n", p->name, p->pid);
       cprintf("wait_time=%d\n", p->wait_time);
       cprintf("ticks={%d, %d, %d}\n", p->ticks[0], p->ticks[1], p->ticks[2]);
       cprintf("times={%d, %d, %d}\n", p->times[0], p->times[1], p->times[2]);
       
+      // Get start_tick, duration, and priority from each valid item in sched_stats
       for(int i = 0; i < p->num_stats_used; i++){
         cprintf("start=%d, duration=%d, priority=%d\n", 
                 p->sched_stats[i].start_tick, 
                 p->sched_stats[i].duration, 
                 p->sched_stats[i].priority);
       }
+      // Release the lock before returning
       release(&ptable.lock);
       return 0;
     }

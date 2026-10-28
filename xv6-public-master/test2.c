@@ -1,5 +1,5 @@
 //Sania Rashid - should implement a workload that demonstrates how priority boost can improve
-//performance of a long running CPU bound process..
+//performance of a long running CPU bound process.
 
 #include "types.h"
 #include "stat.h"

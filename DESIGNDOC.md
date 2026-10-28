@@ -9,7 +9,7 @@ Modified files include:
 * syscall.h: Define getpinfo()'s system call number.
 * sysproc.c: Add the kernel implementation of the system call handler sys_getpinfo(), which gets the process ID as input and prints the stats of the relevant process to the terminal.
 * user.h: Add the user-space function prototype (int getpinfo(int pid);).
-* usys.S: Add the user-space assembly stub for the system call trap.
+* usys.S: Add the user-space assembly stub for the system call trap for getpinfo().
 * test1.c: Created a test that contrasts I/O intensive and CPU intensive tasks: I/O processes stay at higher priority, and the CPU process gets demoted to q2
 * test2.c: Created a test that has 9 competing CPU processes running, and if a CPU-bound process gets starved in q2, then the boost periodically raises its priority, preventing sarvation.
 * test3.c: Created a test that calls sleep() before its q0 time slice expires and then stays at the highest priority for the whole run.
